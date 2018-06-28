@@ -1,5 +1,9 @@
 import bpy
 import math
+import os
+
+# this file's folder
+dir = os.path.dirname(os.path.abspath(__file__))
 # object's location
 # bpy.data.objects["Torus.002"].location
 
@@ -54,5 +58,9 @@ bpy.data.objects['Camera'].rotation_euler = (0, 0, math.pi/2)
 
 sceneKey = bpy.data.scenes.keys()[0]
 bpy.data.scenes[sceneKey].render.image_settings.file_format = 'JPEG'
-bpy.data.scenes[sceneKey].render.filepath = 'camera_1'
+bpy.context.scene.render.resolution_x = 500
+bpy.context.scene.render.resolution_y = 500
+bpy.context.scene.render.resolution_percentage = 20
+
+bpy.data.scenes[sceneKey].render.filepath = dir + '/camera_1'
 bpy.ops.render.render( write_still=True )
