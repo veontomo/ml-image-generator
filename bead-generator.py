@@ -4,10 +4,17 @@ import math
 import os
 import random
 import mathutils
+import sys
+from PIL import Image, ImageDraw
 
 # this file's folder
 currentDir = os.path.dirname(os.path.abspath(__file__))
 bpy.ops.object.delete(use_global=False)
+
+print(sys.version_info)
+
+import  PIL as pillow
+from PIL import Image, ImageDraw
 
 
 rotation = (0, 0, 0)
@@ -78,14 +85,14 @@ def create_material(name, color_rgba):
 	#mtex.rgb_to_intensity = True
 	
 	return mat
-def capture(name):
+def capture(dir, name):
 	bpy.context.scene.render.image_settings.color_mode = 'RGB'
 	sceneKey = bpy.data.scenes.keys()[0]
 	bpy.data.scenes[sceneKey].render.image_settings.file_format = 'JPEG'
 	bpy.context.scene.render.resolution_x = 800
 	bpy.context.scene.render.resolution_y = 800
 	bpy.context.scene.render.resolution_percentage = 100
-	bpy.data.scenes[sceneKey].render.filepath = currentDir + '/' + name
+	bpy.data.scenes[sceneKey].render.filepath = dir + '/' + name
 	bpy.ops.render.render( write_still=True )
 
 
@@ -94,8 +101,8 @@ bpy.context.scene.render.engine = 'CYCLES'
 xmax = 4
 ymax = 4
 z = 2*r1
-N = 5
-T = 2
+N = 15
+T = 5
 random.seed(0.5)
 
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
@@ -107,26 +114,45 @@ for i, pos in enumerate(locations):
 	create_bead(pos, 'bead'+str(i), materials[m])
 add_plane((0, 0, 0))
 add_lamp(4000, bpy.data.objects['bead0'], (5, 5, 5))
-add_lamp(500, bpy.data.objects['bead1'], (0, -1, 5))
+add_lamp(500, bpy.data.objects['bead0'], (0, -1, 5))
 
 add_camera(bpy.data.objects['bead0'])
-capture('beads1')
+fileName = 'scene1'
+workingDir = currentDir + '/output'
+capture(workingDir, fileName)
 
 
-
+infoFile = open(workingDir + '/' + fileName + '-data.txt', 'w')
+infoFile.write('# xmin, ymin, xmax, ymax\n')
 
 scene = bpy.context.scene
 render_scale = scene.render.resolution_percentage / 100
 render_size = (int(scene.render.resolution_x * render_scale), int(scene.render.resolution_y * render_scale))
-
 camera =  bpy.data.objects['Camera']
+
+path = workingDir + '/' + fileName + '.jpg'
+#source_img = Image.open(path)
+#draw = ImageDraw.Draw(source_img)
+
+
 for i in range(0, N):
 	obj = bpy.data.objects['bead' + str(i)]
 	center = obj.location
 	dim = obj.dimensions
 	points =  [mathutils.Vector((h, w, d)) for h in [-1, 1] for w in [-1, 1] for d in [-1, 1]]
-	box =  [mathutils.Vector(center) + mathutils.Vector((p[0]*dim[0]/2, p[1]*dim[1]/2, p[2]*dim[2]/2)) for p in points]
-	for b in box:
-		co_2d = bpy_extras.object_utils.world_to_camera_view(scene, camera, b)
-		print(obj.name + " dim-2 coords:", co_2d, "Pixel Coords:", (round(co_2d.x * render_size[0]), round(co_2d.y * render_size[1])))
+	vertices3d =  [mathutils.Vector(center) + mathutils.Vector((p[0]*dim[0]/2, p[1]*dim[1]/2, p[2]*dim[2]/2)) for p in points]
+	vertices2d = [(round(v.x * render_size[0]), round(v.y * render_size[1])) for v in [bpy_extras.object_utils.world_to_camera_view(scene, camera, b) for b in vertices3d]]
+	print(vertices2d)
+	minX = min([v[0] for v in vertices2d])
+	minY = min([v[1] for v in vertices2d])
+	maxX = max([v[0] for v in vertices2d])
+	maxY = max([v[1] for v in vertices2d])
+	box2d = [minX, minY, maxX, maxY]
+	infoFile.write(', '.join([str(c) for c in box2d]) + '\n')
+	#draw.rectangle(((minX, minY), (maxX, maxY)), fill="black")
 
+#source_img.save(workingDir + '/' + fileName + '-box.jpg', "JPEG")
+	#for co_2d in vertices2d:
+		#co_2d = bpy_extras.object_utils.world_to_camera_view(scene, camera, b)
+	#	print(obj.name + " dim-2 coords:", co_2d, "Pixel Coords:", (round(co_2d.x * render_size[0]), round(co_2d.y * render_size[1])))
+infoFile.close()
