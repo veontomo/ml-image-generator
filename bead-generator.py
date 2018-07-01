@@ -5,16 +5,12 @@ import os
 import random
 import mathutils
 import sys
-from PIL import Image, ImageDraw
 
 # this file's folder
 currentDir = os.path.dirname(os.path.abspath(__file__))
 bpy.ops.object.delete(use_global=False)
 
 print(sys.version_info)
-
-import  PIL as pillow
-from PIL import Image, ImageDraw
 
 
 rotation = (0, 0, 0)
@@ -130,10 +126,6 @@ render_scale = scene.render.resolution_percentage / 100
 render_size = (int(scene.render.resolution_x * render_scale), int(scene.render.resolution_y * render_scale))
 camera =  bpy.data.objects['Camera']
 
-path = workingDir + '/' + fileName + '.jpg'
-#source_img = Image.open(path)
-#draw = ImageDraw.Draw(source_img)
-
 
 for i in range(0, N):
 	obj = bpy.data.objects['bead' + str(i)]
@@ -149,9 +141,7 @@ for i in range(0, N):
 	maxY = max([v[1] for v in vertices2d])
 	box2d = [minX, minY, maxX, maxY]
 	infoFile.write(', '.join([str(c) for c in box2d]) + '\n')
-	#draw.rectangle(((minX, minY), (maxX, maxY)), fill="black")
 
-#source_img.save(workingDir + '/' + fileName + '-box.jpg', "JPEG")
 	#for co_2d in vertices2d:
 		#co_2d = bpy_extras.object_utils.world_to_camera_view(scene, camera, b)
 	#	print(obj.name + " dim-2 coords:", co_2d, "Pixel Coords:", (round(co_2d.x * render_size[0]), round(co_2d.y * render_size[1])))
