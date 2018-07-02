@@ -13,6 +13,7 @@ bpy.ops.object.delete(use_global=False)
 print(sys.version_info)
 
 
+
 rotation = (0, 0, 0)
 r1 = 0.2
 r2 = 0.8*r1
@@ -32,6 +33,24 @@ def create_bead(location, name, mat):
 def add_plane(location):
 	plane = bpy.ops.mesh.primitive_plane_add(radius=10, view_align=False, enter_editmode=False, location=location, layers=layers)
 	bpy.context.object.name = "surface"
+	mat = bpy.data.materials.new('surface-wood')
+	mat.use_nodes = True
+
+	mat.node_tree.nodes["Diffuse BSDF"].inputs[0].default_value = (0.7, 0.3, 0.2, 0.8)
+	mat.node_tree.nodes["Diffuse BSDF"].inputs[1].default_value = 2
+	
+	# Create procedural texture 
+	texture = bpy.data.textures.new('BumpTex', type = 'IMAGE')
+	texture.image = bpy.data.images.load(currentDir + '/wood.jpg')
+
+	# Add texture slot for bump texture
+	mtex = mat.texture_slots.add()
+	mtex.texture = texture
+	mtex.texture_coords = 'UV'
+	mtex.use_map_color_diffuse = False
+	mtex.use_map_normal = True 
+	bpy.data.objects['surface'].data.materials.append(texture)
+
 	return plane
 
 def add_lamp(strength, trackObject, location):
@@ -78,9 +97,31 @@ def create_material(name, color_rgba):
 	mtex.texture_coords = 'UV'
 	mtex.use_map_color_diffuse = False
 	mtex.use_map_normal = True 
+	#mtex.rgb_to_intensity = True	
+	return mat
+
+def create_materialWOOD(name, color_rgba):
+	mat = bpy.data.materials.new(name)
+	mat.use_nodes = True
+
+	mat.node_tree.nodes["Glossy BSDF"].inputs[0].default_value = color_rgba
+	mat.node_tree.nodes["Glossy BSDF"].inputs[1].default_value = 2
+	mat.node_tree.nodes["Glossy BSDF"].label = name
+
+	# Create procedural texture 
+	texture = bpy.data.textures.new('BumpTex', type = 'WOOD')
+
+
+	# Add texture slot for bump texture
+	mtex = mat.texture_slots.add()
+	mtex.texture = texture
+	mtex.texture_coords = 'UV'
+	mtex.use_map_color_diffuse = False
+	mtex.use_map_normal = True 
 	#mtex.rgb_to_intensity = True
 	
 	return mat
+
 def capture(dir, name):
 	bpy.context.scene.render.image_settings.color_mode = 'RGB'
 	sceneKey = bpy.data.scenes.keys()[0]
