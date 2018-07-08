@@ -31,13 +31,12 @@ def create_bead(location, rotation, name, mat):
 
 	return bead
 
-def add_plane(location):
-	plane = bpy.ops.mesh.primitive_plane_add(radius=10, view_align=False, enter_editmode=False, location=location, layers=layers)
+def add_plane(config):
+	plane = bpy.ops.mesh.primitive_plane_add(radius=10, view_align=False, enter_editmode=False, location=config['location'], layers=layers)
 	bpy.context.object.name = "surface"
 	mat = bpy.data.materials.new('surface-wood')
 	mat.use_nodes = True
-
-	mat.node_tree.nodes["Diffuse BSDF"].inputs[0].default_value = (0.7, 0.3, 0.2, 0.8)
+	mat.node_tree.nodes["Diffuse BSDF"].inputs[0].default_value = config['color']
 	mat.node_tree.nodes["Diffuse BSDF"].inputs[1].default_value = 2
 	
 	# Create procedural texture 
@@ -55,7 +54,7 @@ def add_plane(location):
 	return plane
 
 def add_lamp(strength, trackObject, location):
-	rawLamp = bpy.ops.object.lamp_add(type='SPOT', radius=20, view_align=False, location=location, layers=layers)
+	bpy.ops.object.lamp_add(type='SPOT', radius=20, view_align=False, location=location, layers=layers)
 	rawName = bpy.context.object.name
 	bpy.data.lamps[rawName].node_tree.nodes['Emission'].inputs[1].default_value = strength
 	lamp = bpy.data.objects[rawName] 
@@ -65,12 +64,19 @@ def add_lamp(strength, trackObject, location):
 	trackConstraint.up_axis = 'UP_Y'
 
 
-def add_camera(trackObject):
-	camera = bpy.data.objects['Camera']
-	camera.location = (0, 0, 8)
+def add_camera(config):
+	bpy.ops.object.camera_add(view_align=True, enter_editmode=False, location=config['location'], layers=layers)
+	camera = bpy.context.object
+	camera.name = config['name']
+	if 'focal-length' in config:
+		camera.data.lens =  config['focal-length']
+		camera.data.lens_unit = 'MILLIMETERS'
+	if 'dof' in config:
+		camera.data.dof_distance = config['dof']
+
 	camera.rotation_euler = (0, 0, math.pi/2)
 	trackConstraint = camera.constraints.new("TRACK_TO")
-	trackConstraint.target = trackObject
+	trackConstraint.target = bpy.data.objects[config['target']]
 	trackConstraint.track_axis = 'TRACK_NEGATIVE_Z'
 	trackConstraint.up_axis = 'UP_Y'
 
@@ -123,15 +129,18 @@ def create_materialWOOD(name, color_rgba):
 	
 	return mat
 
-def capture(dir, name):
+def capture(config):
 	bpy.context.scene.render.image_settings.color_mode = 'RGB'
 	sceneKey = bpy.data.scenes.keys()[0]
-	bpy.data.scenes[sceneKey].render.image_settings.file_format = 'JPEG'
-	bpy.context.scene.render.resolution_x = 800
-	bpy.context.scene.render.resolution_y = 800
-	bpy.context.scene.render.resolution_percentage = 100
-	bpy.data.scenes[sceneKey].render.filepath = dir + '/' + name
-	bpy.ops.render.render( write_still=True )
+	for cameraName in config['cameras']:
+		bpy.data.scenes[sceneKey].camera = bpy.data.objects[cameraName]
+		bpy.data.scenes[sceneKey].render.image_settings.file_format = 'JPEG'
+		bpy.context.scene.render.resolution_x = config['res-x']
+		bpy.context.scene.render.resolution_y = config['res-y']
+		bpy.context.scene.render.resolution_percentage = config['res-percent']
+		bpy.data.scenes[sceneKey].render.filepath = config['folder'] + '/' + config['name'] + '-' + cameraName
+		bpy.ops.render.render( write_still=True )
+		create_info_file(config['folder'], config['name'] + '-' + cameraName)
 
 
 
@@ -141,10 +150,12 @@ def create_scene(config):
 		m = random.randint(0, T-1)
 		print(name, m, pos, rot)
 		create_bead(pos, rot, name, materials[m])
-	add_plane((0, 0, 0))
+	add_plane(config['plane'])
+
 	for lamp in config['lamps']:
 		add_lamp(lamp['strength'], bpy.data.objects[lamp['target']], lamp['location'])
-	add_camera(bpy.data.objects[names[2]])
+	for camera in config['cameras']:
+		add_camera(camera)
 
 
 def create_info_file(workingDir, fileName):
@@ -154,7 +165,7 @@ def create_info_file(workingDir, fileName):
 	scene = bpy.context.scene
 	render_scale = scene.render.resolution_percentage / 100
 	render_size = (int(scene.render.resolution_x * render_scale), int(scene.render.resolution_y * render_scale))
-	camera =  bpy.data.objects['Camera']
+	camera =  bpy.data.objects['camera-1']
 
 
 	for name in names:
@@ -182,12 +193,19 @@ N = 15
 T = 5
 random.seed(0.1)
 
-fileName = 'scene1'
-workingDir = currentDir + '/output'
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
 locations = [(random.randrange(0, xmax/d, 1)*d, random.randrange(0, ymax/d, 1)*d, z) for i in range(0, N)]
 rotations = [(math.pi * random.random(), math.pi * random.random(), 0) for i in range(0, N)]
 names = ['bead' + str(i) for i in range(0, N)]
-create_scene({'lamps': [{'strength': 4000, 'target': names[2], 'location': (2, 2, 5)}, {'strength': 500, 'target': names[1], 'location': (0, -1, 5)},{'strength': 1000, 'target': names[1], 'location': (-2, 2, 5)} ]})
-capture(workingDir, fileName)
-create_info_file(workingDir, fileName)
+create_scene(
+	{'lamps': [
+		{'strength': 3000, 'target': names[1], 'location': (2, 2, 5)}, 
+		{'strength': 500, 'target': names[2], 'location': (0, -1, 5)},
+		{'strength': 1000, 'target': names[3], 'location': (-2, -2, 5)}],
+	'plane': {'location': (0, 0, 0), 'color': (0.3, 0.1, 0.4, 0.9)},
+	'cameras': [
+		{'name': 'camera-1', 'location': (0, 0, 8), 'target': names[2], 'focal-length': 20, 'dof': 15},
+		{'name': 'camera-2', 'location': (1, 2, 6), 'target': names[3], 'focal-length': 40, 'dof': 5}
+	]})
+capture({'folder': currentDir + '/output', 'name': 'scene1', 'res-x': 400, 'res-y': 400, 'res-percent': 100,
+	'cameras': ['camera-1', 'camera-2']})
