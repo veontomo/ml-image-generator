@@ -5,7 +5,7 @@ import os
 import random
 import mathutils
 import sys
-
+from threading import Thread
 # this file's folder
 currentDir = os.path.dirname(os.path.abspath(__file__))
 bpy.ops.object.delete(use_global=False)
@@ -140,7 +140,13 @@ def capture(config):
 		bpy.context.scene.render.resolution_percentage = config['res-percent']
 		bpy.data.scenes[sceneKey].render.filepath = config['folder'] + '/' + config['name'] + '-' + cameraName
 		bpy.ops.render.render( write_still=True )
-		create_info_file(config['folder'], config['name'] + '-' + cameraName)
+		config2 = {'folder': config['folder'], 
+			'name': config['name'] + '-' + cameraName,
+			'cameraName':cameraName,
+			'objects': config['names']}
+
+		create_info_file(config2)
+		#create_info_file(config['folder'], config['name'] + '-' + cameraName, cameraName, config['names'])
 
 
 
@@ -158,24 +164,23 @@ def create_scene(config):
 		add_camera(camera)
 
 
-def create_info_file(workingDir, fileName):
-	infoFile = open(workingDir + '/' + fileName + '-data.txt', 'w')
+def create_info_file(config):
+	infoFile = open(config['folder'] + '/' + config['name'] + '-data.txt', 'w')
 	infoFile.write('# xmin, ymin, xmax, ymax\n')
 
 	scene = bpy.context.scene
 	render_scale = scene.render.resolution_percentage / 100
 	render_size = (int(scene.render.resolution_x * render_scale), int(scene.render.resolution_y * render_scale))
-	camera =  bpy.data.objects['camera-1']
+	camera =  bpy.data.objects[config['cameraName']]
 
-
-	for name in names:
+	for name in config['objects']:
 		obj = bpy.data.objects[name]
 		center = obj.location
 		dim = obj.dimensions
 		points =  [mathutils.Vector((h, w, d)) for h in [-1, 1] for w in [-1, 1] for d in [-1, 1]]
 		vertices3d =  [mathutils.Vector(center) + mathutils.Vector((p[0]*dim[0]/2, p[1]*dim[1]/2, p[2]*dim[2]/2)) for p in points]
-		vertices2d = [(round(v.x * render_size[0]), round(v.y * render_size[1])) for v in [bpy_extras.object_utils.world_to_camera_view(scene, camera, b) for b in vertices3d]]
-		print(vertices2d)
+		vertices2d = [(round(v.x * render_size[0]), 
+			round(v.y * render_size[1])) for v in [bpy_extras.object_utils.world_to_camera_view(scene, camera, b) for b in vertices3d]]
 		minX = min([v[0] for v in vertices2d])
 		minY = min([v[1] for v in vertices2d])
 		maxX = max([v[0] for v in vertices2d])
@@ -199,13 +204,20 @@ rotations = [(math.pi * random.random(), math.pi * random.random(), 0) for i in 
 names = ['bead' + str(i) for i in range(0, N)]
 create_scene(
 	{'lamps': [
-		{'strength': 3000, 'target': names[1], 'location': (2, 2, 5)}, 
+		{'strength': 3000, 'target': names[1], 'location': (3, 3, 5)}, 
 		{'strength': 500, 'target': names[2], 'location': (0, -1, 5)},
 		{'strength': 1000, 'target': names[3], 'location': (-2, -2, 5)}],
-	'plane': {'location': (0, 0, 0), 'color': (0.3, 0.1, 0.4, 0.9)},
+	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9)},
 	'cameras': [
 		{'name': 'camera-1', 'location': (0, 0, 8), 'target': names[2], 'focal-length': 20, 'dof': 15},
-		{'name': 'camera-2', 'location': (1, 2, 6), 'target': names[3], 'focal-length': 40, 'dof': 5}
+		{'name': 'camera-2', 'location': (1, 2, 6), 'target': names[3]}
 	]})
-capture({'folder': currentDir + '/output', 'name': 'scene1', 'res-x': 400, 'res-y': 400, 'res-percent': 100,
-	'cameras': ['camera-1', 'camera-2']})
+
+capture({
+	'folder': currentDir + '/output', 
+	'name': 'scene1', 
+	'res-x': 400, 
+	'res-y': 400, 
+	'res-percent': 100,
+	'cameras': ['camera-1', 'camera-2'], 
+	'names': names})
