@@ -14,22 +14,35 @@ print(sys.version_info)
 
 
 
-rotation = (0, 0, 0)
-r1 = 0.2
-r2 = 0.8*r1
-d = 2*r1
-scale = 2
 layers = tuple([True] + 19*[False])
+xmax = 4
+ymax = 4
+r1 = 0.2
+d = 2*r1
+z = 2*r1
+N = 15
+T = 5
+random.seed(0.1)
 
 def create_bead(location, rotation, name, mat):
-	bead = bpy.ops.mesh.primitive_torus_add(view_align=False, location=location, layers=layers, major_radius=r1, minor_radius=r2)
+	r2 = 0.8*r1
+	scale = 2
+	bpy.ops.mesh.primitive_torus_add(view_align=False, location=location, layers=layers, major_radius=r1, minor_radius=r2)
 	bpy.ops.transform.resize(value=(1, 1, scale), constraint_axis=(False, False, True), constraint_orientation='GLOBAL', mirror=False, proportional='DISABLED', proportional_edit_falloff='SMOOTH', proportional_size=1)
-	bpy.context.object.name = name
 	bead = bpy.context.object
+	bead.name = name
 	bead.rotation_euler = rotation
 	bead.data.materials.append(mat)
-
 	return bead
+
+def create_cube(location, rotation, name, mat):
+	bpy.ops.mesh.primitive_cube_add(radius=0.2, view_align=False, enter_editmode=False, location=location, layers=layers)
+	cube = bpy.context.object
+	cube.name = name
+	cube.rotation_euler = rotation
+	cube.data.materials.append(mat)
+	return cube
+
 
 def add_plane(config):
 	plane = bpy.ops.mesh.primitive_plane_add(radius=10, view_align=False, enter_editmode=False, location=config['location'], layers=layers)
@@ -152,11 +165,13 @@ def capture(config):
 
 
 def create_scene(config):
-	for name, pos, rot in zip(names, locations, rotations):
+	beadsConfig = config['beads']
+	for name, pos, rot in zip(beadsConfig['names'], beadsConfig['locations'], beadsConfig['rotations']):
 		m = random.randint(0, T-1)
 		print(name, m, pos, rot)
-		create_bead(pos, rot, name, materials[m])
+		create_bead(pos, rot, name, beadsConfig['materials'][m])
 	add_plane(config['plane'])
+	create_cube((0, 0, 1), (0, 0, 0), "cube", beadsConfig['materials'][0])
 
 	for lamp in config['lamps']:
 		add_lamp(lamp['strength'], bpy.data.objects[lamp['target']], lamp['location'])
@@ -191,12 +206,7 @@ def create_info_file(config):
 	infoFile.close()
 
 bpy.context.scene.render.engine = 'CYCLES'
-xmax = 4
-ymax = 4
-z = 2*r1
-N = 15
-T = 5
-random.seed(0.1)
+
 
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
 locations = [(random.randrange(0, xmax/d, 1)*d, random.randrange(0, ymax/d, 1)*d, z) for i in range(0, N)]
@@ -208,6 +218,7 @@ create_scene(
 		{'strength': 500, 'target': names[2], 'location': (0, -1, 5)},
 		{'strength': 1000, 'target': names[3], 'location': (-2, -2, 5)}],
 	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9)},
+	'beads': {'names': names, 'locations': locations, 'rotations': rotations, 'materials': materials},
 	'cameras': [
 		{'name': 'camera-1', 'location': (0, 0, 8), 'target': names[2], 'focal-length': 20, 'dof': 15},
 		{'name': 'camera-2', 'location': (1, 2, 6), 'target': names[3]}
