@@ -29,6 +29,7 @@ def create_bead(location, rotation, name, mat):
 	scale = 2
 	bpy.ops.mesh.primitive_torus_add(view_align=False, location=location, layers=layers, major_radius=r1, minor_radius=r2)
 	bpy.ops.transform.resize(value=(1, 1, scale), constraint_axis=(False, False, True), constraint_orientation='GLOBAL', mirror=False, proportional='DISABLED', proportional_edit_falloff='SMOOTH', proportional_size=1)
+	bpy.ops.rigidbody.objects_add()
 	bead = bpy.context.object
 	bead.name = name
 	bead.rotation_euler = rotation
@@ -47,6 +48,8 @@ def create_cube(location, rotation, name, mat):
 def add_plane(config):
 	plane = bpy.ops.mesh.primitive_plane_add(radius=10, view_align=False, enter_editmode=False, location=config['location'], layers=layers)
 	bpy.context.object.name = "surface"
+	bpy.ops.rigidbody.objects_add()
+	bpy.context.object.rigid_body.enabled = False
 	mat = bpy.data.materials.new('surface-wood')
 	mat.use_nodes = True
 	mat.node_tree.nodes["Diffuse BSDF"].inputs[0].default_value = config['color']
@@ -152,7 +155,8 @@ def capture(config):
 		bpy.context.scene.render.resolution_y = config['res-y']
 		bpy.context.scene.render.resolution_percentage = config['res-percent']
 		bpy.data.scenes[sceneKey].render.filepath = config['folder'] + '/' + config['name'] + '-' + cameraName
-		bpy.ops.render.render( write_still=True )
+		bpy.data.scenes[sceneKey].frame_set(150)
+		bpy.ops.render.render( write_still=False )
 		config2 = {'folder': config['folder'], 
 			'name': config['name'] + '-' + cameraName,
 			'cameraName':cameraName,
@@ -209,9 +213,12 @@ bpy.context.scene.render.engine = 'CYCLES'
 
 
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
-locations = [(random.randrange(0, xmax/d, 1)*d, random.randrange(0, ymax/d, 1)*d, z) for i in range(0, N)]
+locations = [(random.randrange(0, xmax/d, 1)*d, random.randrange(0, ymax/d, 1)*d, random.randrange(3, 20, 1)) for i in range(0, N)]
 rotations = [(math.pi * random.random(), math.pi * random.random(), 0) for i in range(0, N)]
 names = ['bead' + str(i) for i in range(0, N)]
+
+bpy.ops.rigidbody.world_add()
+
 create_scene(
 	{'lamps': [
 		{'strength': 3000, 'target': names[1], 'location': (3, 3, 5)}, 
