@@ -20,8 +20,8 @@ ymax = 4
 r1 = 0.2
 d = 2*r1
 z = 2*r1
-N = 15
-T = 5
+N = 20
+T = 4
 random.seed(0.1)
 
 def create_bead(location, rotation, name, mat):
@@ -46,8 +46,10 @@ def create_cube(location, rotation, name, mat):
 
 
 def add_plane(config):
-	plane = bpy.ops.mesh.primitive_plane_add(radius=10, view_align=False, enter_editmode=False, location=config['location'], layers=layers)
+	plane = bpy.ops.mesh.primitive_plane_add(view_align=False, enter_editmode=False, location=config['location'], layers=layers)
 	bpy.context.object.name = "surface"
+	size = config['size']
+	bpy.ops.transform.resize(value=(size, size, size), constraint_axis=(False, False, False))
 	bpy.ops.rigidbody.objects_add()
 	bpy.context.object.rigid_body.enabled = False
 	mat = bpy.data.materials.new('surface-wood')
@@ -148,15 +150,21 @@ def create_materialWOOD(name, color_rgba):
 def capture(config):
 	bpy.context.scene.render.image_settings.color_mode = 'RGB'
 	sceneKey = bpy.data.scenes.keys()[0]
+	scene = bpy.data.scenes[sceneKey]
 	for cameraName in config['cameras']:
-		bpy.data.scenes[sceneKey].camera = bpy.data.objects[cameraName]
-		bpy.data.scenes[sceneKey].render.image_settings.file_format = 'JPEG'
+		scene.camera = bpy.data.objects[cameraName]
+		scene.render.image_settings.file_format = 'JPEG'
 		bpy.context.scene.render.resolution_x = config['res-x']
 		bpy.context.scene.render.resolution_y = config['res-y']
 		bpy.context.scene.render.resolution_percentage = config['res-percent']
-		bpy.data.scenes[sceneKey].render.filepath = config['folder'] + '/' + config['name'] + '-' + cameraName
-		bpy.data.scenes[sceneKey].frame_set(150)
-		bpy.ops.render.render( write_still=False )
+
+		frames = 50, 100, 150
+		for frame in frames:
+			scene.frame_set(frame)
+			scene.render.filepath = config['folder'] + '/' + config['name'] + '-' + cameraName + '-f-' + str(frame)
+			bpy.ops.render.render(animation=False, write_still=True)
+
+
 		config2 = {'folder': config['folder'], 
 			'name': config['name'] + '-' + cameraName,
 			'cameraName':cameraName,
@@ -165,7 +173,28 @@ def capture(config):
 		create_info_file(config2)
 		#create_info_file(config['folder'], config['name'] + '-' + cameraName, cameraName, config['names'])
 
+def add_verical_borders(config):
+	print(config)
+	for key in config:
+		add_verical_border(key) 
 
+def add_verical_border(config):
+	pos = config['pos']
+	plane = config['normal']
+	if plane == 'x':
+		location = (pos, 0, 1)
+		rotation = (0, math.pi / 2, 0)
+		scale = (1, config['len'], 1)
+	if plane == 'y':
+		location = (0, pos, 1)
+		rotation = (math.pi / 2, 0, 0)
+		scale = (config['len'], 1, 1)
+	plane = bpy.ops.mesh.primitive_plane_add(view_align=False, enter_editmode=False, location=location)
+	bpy.context.object.rotation_euler = rotation
+	bpy.ops.transform.resize(value=scale, constraint_axis=(False, False, False))
+	bpy.ops.rigidbody.objects_add()
+	bpy.context.object.rigid_body.enabled = False
+	bpy.context.object.hide_render = True
 
 
 def create_scene(config):
@@ -175,6 +204,7 @@ def create_scene(config):
 		print(name, m, pos, rot)
 		create_bead(pos, rot, name, beadsConfig['materials'][m])
 	add_plane(config['plane'])
+	add_verical_borders(config['borders'])
 	create_cube((0, 0, 1), (0, 0, 0), "cube", beadsConfig['materials'][0])
 
 	for lamp in config['lamps']:
@@ -224,7 +254,8 @@ create_scene(
 		{'strength': 3000, 'target': names[1], 'location': (3, 3, 5)}, 
 		{'strength': 500, 'target': names[2], 'location': (0, -1, 5)},
 		{'strength': 1000, 'target': names[3], 'location': (-2, -2, 5)}],
-	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9)},
+	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9), 'size': 7},
+	'borders': [{'normal': 'x', 'pos': -5, 'len': 7}, {'normal': 'x', 'pos': 5, 'len': 7}, {'normal': 'y', 'pos': -5, 'len': 7}, {'normal': 'y', 'pos': 5, 'len': 7}],
 	'beads': {'names': names, 'locations': locations, 'rotations': rotations, 'materials': materials},
 	'cameras': [
 		{'name': 'camera-1', 'location': (0, 0, 8), 'target': names[2], 'focal-length': 20, 'dof': 15},
