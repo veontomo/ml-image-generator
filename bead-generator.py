@@ -6,6 +6,8 @@ import random
 import mathutils
 import sys
 import time
+from bpy_extras.view3d_utils import location_3d_to_region_2d
+
 # this file's folder
 currentDir = os.path.dirname(os.path.abspath(__file__))
 bpy.ops.object.delete(use_global=False)
@@ -20,8 +22,8 @@ ymax = 4
 r1 = 0.2
 d = 2*r1
 z = 2*r1
-N = 20
-T = 4
+N = 40
+T = 10
 random.seed(0.1)
 
 def create_bead(location, rotation, name, mat):
@@ -93,10 +95,11 @@ def add_camera(config):
 		camera.data.dof_distance = config['dof']
 
 	camera.rotation_euler = (0, 0, math.pi/2)
-	trackConstraint = camera.constraints.new("TRACK_TO")
-	trackConstraint.target = bpy.data.objects[config['target']]
-	trackConstraint.track_axis = 'TRACK_NEGATIVE_Z'
-	trackConstraint.up_axis = 'UP_Y'
+	if 'target' in config:
+		trackConstraint = camera.constraints.new("TRACK_TO")
+		trackConstraint.target = bpy.data.objects[config['target']]
+		trackConstraint.track_axis = 'TRACK_NEGATIVE_Z'
+		trackConstraint.up_axis = 'UP_Y'
 
 def create_material(name, color_rgba):
 	mat = bpy.data.materials.new(name)
@@ -158,21 +161,50 @@ def capture(config):
 		bpy.context.scene.render.resolution_y = config['res-y']
 		bpy.context.scene.render.resolution_percentage = config['res-percent']
 
-		frames = 100, 150, 200
-		for frame in frames:
+		for frame in config['frames']:
+			filename = config['folder'] + '/' + config['name'] + '-' + cameraName + '-f-' + str(frame)
 			scene.frame_set(frame)
-			scene.render.filepath = config['folder'] + '/' + config['name'] + '-' + cameraName + '-f-' + str(frame)
+			scene.render.filepath = filename
 			bpy.ops.render.render(animation=False, write_still=True)
 
 
-		config2 = {'folder': config['folder'], 
-			'name': config['name'] + '-' + cameraName,
-			'cameraName':cameraName,
-			'objects': config['names']}
+			config2 = {
+				'folder': config['folder'], 
+				'name': filename,
+				'cameraName': cameraName,
+				'objects': config['names'],
+				'frame': frame
+			}
 
-		create_info_file(config2)
-		#create_info_file(config['folder'], config['name'] + '-' + cameraName, cameraName, config['names'])
+			create_info_file(config2)
 
+def create_info_file(config):
+	infoFile = open(config['name'] + '-data.txt', 'w')
+	infoFile.write('# xmin, ymin, xmax, ymax\n')
+
+	scene = bpy.context.scene
+	scene.frame_set(config['frame'])
+	render_scale = scene.render.resolution_percentage / 100
+	render_size = (int(scene.render.resolution_x * render_scale), int(scene.render.resolution_y * render_scale))
+	camera =  bpy.data.objects[config['cameraName']]
+
+	for name in config['objects']:
+		obj = bpy.data.objects[name]
+		# center = obj.location
+		center = obj.matrix_world.to_translation()
+		dim = obj.dimensions
+		points =  [mathutils.Vector((h, w, d)) for h in [-1, 1] for w in [-1, 1] for d in [-1, 1]]
+		vertices3d =  [mathutils.Vector(center) + mathutils.Vector((p[0]*dim[0]/2, p[1]*dim[1]/2, p[2]*dim[2]/2)) for p in points]
+		vertices2d = [(round(v.x * render_size[0]), 
+			round(v.y * render_size[1])) for v in [bpy_extras.object_utils.world_to_camera_view(scene, camera, b) for b in vertices3d]]
+		minX = min([v[0] for v in vertices2d])
+		minY = min([v[1] for v in vertices2d])
+		maxX = max([v[0] for v in vertices2d])
+		maxY = max([v[1] for v in vertices2d])
+		box2d = [minX, minY, maxX, maxY]
+		infoFile.write(', '.join([str(c) for c in box2d]) + '\n')
+
+	infoFile.close()
 def add_verical_borders(config):
 	print(config)
 	for key in config:
@@ -213,37 +245,12 @@ def create_scene(config):
 		add_camera(camera)
 
 
-def create_info_file(config):
-	infoFile = open(config['folder'] + '/' + config['name'] + '-data.txt', 'w')
-	infoFile.write('# xmin, ymin, xmax, ymax\n')
-
-	scene = bpy.context.scene
-	render_scale = scene.render.resolution_percentage / 100
-	render_size = (int(scene.render.resolution_x * render_scale), int(scene.render.resolution_y * render_scale))
-	camera =  bpy.data.objects[config['cameraName']]
-
-	for name in config['objects']:
-		obj = bpy.data.objects[name]
-		center = obj.location
-		dim = obj.dimensions
-		points =  [mathutils.Vector((h, w, d)) for h in [-1, 1] for w in [-1, 1] for d in [-1, 1]]
-		vertices3d =  [mathutils.Vector(center) + mathutils.Vector((p[0]*dim[0]/2, p[1]*dim[1]/2, p[2]*dim[2]/2)) for p in points]
-		vertices2d = [(round(v.x * render_size[0]), 
-			round(v.y * render_size[1])) for v in [bpy_extras.object_utils.world_to_camera_view(scene, camera, b) for b in vertices3d]]
-		minX = min([v[0] for v in vertices2d])
-		minY = min([v[1] for v in vertices2d])
-		maxX = max([v[0] for v in vertices2d])
-		maxY = max([v[1] for v in vertices2d])
-		box2d = [minX, minY, maxX, maxY]
-		infoFile.write(', '.join([str(c) for c in box2d]) + '\n')
-
-	infoFile.close()
 
 bpy.context.scene.render.engine = 'CYCLES'
 
 
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
-locations = [(random.randrange(0, xmax/d, 1)*d, random.randrange(0, ymax/d, 1)*d, random.randrange(3, 20, 1)) for i in range(0, N)]
+locations = [(random.randrange(0, xmax/d, 1)*d, random.randrange(0, ymax/d, 1)*d, random.randrange(3, 10, 1)) for i in range(0, N)]
 rotations = [(math.pi * random.random(), math.pi * random.random(), 0) for i in range(0, N)]
 names = ['bead' + str(i) for i in range(0, N)]
 
@@ -267,8 +274,9 @@ bpy.ops.ptcache.bake_all(bake=True)
 capture({
 	'folder': currentDir + '/output', 
 	'name': 'scene1', 
-	'res-x': 400, 
-	'res-y': 400, 
+	'res-x': 500, 
+	'res-y': 500, 
 	'res-percent': 100,
-	'cameras': ['camera-1', 'camera-2	'], 
-	'names': names})
+	'cameras': ['camera-1', 'camera-2'], 
+	'names': names,
+	'frames': [100, 150, 200]})
