@@ -5,7 +5,7 @@ import os
 import random
 import mathutils
 import sys
-from threading import Thread
+import time
 # this file's folder
 currentDir = os.path.dirname(os.path.abspath(__file__))
 bpy.ops.object.delete(use_global=False)
@@ -158,7 +158,7 @@ def capture(config):
 		bpy.context.scene.render.resolution_y = config['res-y']
 		bpy.context.scene.render.resolution_percentage = config['res-percent']
 
-		frames = 50, 100, 150
+		frames = 100, 150, 200
 		for frame in frames:
 			scene.frame_set(frame)
 			scene.render.filepath = config['folder'] + '/' + config['name'] + '-' + cameraName + '-f-' + str(frame)
@@ -262,11 +262,13 @@ create_scene(
 		{'name': 'camera-2', 'location': (1, 2, 6), 'target': names[3]}
 	]})
 
+bpy.ops.ptcache.bake_all(bake=True)
+
 capture({
 	'folder': currentDir + '/output', 
 	'name': 'scene1', 
 	'res-x': 400, 
 	'res-y': 400, 
 	'res-percent': 100,
-	'cameras': ['camera-1', 'camera-2'], 
+	'cameras': ['camera-1', 'camera-2	'], 
 	'names': names})
