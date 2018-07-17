@@ -17,18 +17,18 @@ print(sys.version_info)
 
 
 layers = tuple([True] + 19*[False])
-xmax = 4
-ymax = 4
+xmax = 5
+ymax = 5
 r1 = 0.2
 d = 2*r1
 z = 2*r1
-N = 40
-T = 10
+N = 100
+T = 3
+scale = 2
 random.seed(0.1)
 
 def create_bead(location, rotation, name, mat):
 	r2 = 0.8*r1
-	scale = 2
 	bpy.ops.mesh.primitive_torus_add(view_align=False, location=location, layers=layers, major_radius=r1, minor_radius=r2)
 	bpy.ops.transform.resize(value=(1, 1, scale), constraint_axis=(False, False, True), constraint_orientation='GLOBAL', mirror=False, proportional='DISABLED', proportional_edit_falloff='SMOOTH', proportional_size=1)
 	bpy.ops.rigidbody.objects_add()
@@ -233,7 +233,6 @@ def create_scene(config):
 	beadsConfig = config['beads']
 	for name, pos, rot in zip(beadsConfig['names'], beadsConfig['locations'], beadsConfig['rotations']):
 		m = random.randint(0, T-1)
-		print(name, m, pos, rot)
 		create_bead(pos, rot, name, beadsConfig['materials'][m])
 	add_plane(config['plane'])
 	add_verical_borders(config['borders'])
@@ -244,30 +243,62 @@ def create_scene(config):
 	for camera in config['cameras']:
 		add_camera(camera)
 
+def generateLocations(locations, n, area, d):
+	""" Generate n point in the given area using locations as a seed. 
+	Distance between each pair of point should be greater that d.
+	area - array of two points (xmin, ymin) and (xmax, ymax)
+	"""
+	xmin, xmax, ymin, ymax, = area[0][0] + d, area[0][1] - d, area[1][0] + d, area[1][1] - d
+
+	if n == 0:
+		return locations
+	else:
+		init = (random.random()*(xmax-xmin) + xmin, random.random()*(xmax-xmin) + xmin, 1)
+		while not distant(init, locations, d):
+			init = (init[0], init[1], init[2] + d)
+		return generateLocations(locations + [init], n - 1, area, d)
+
+def distant(point, points, d):
+	"""Return true if the distance between given point and every point in points is greater that d"""
+	for p in points:
+		if distanceSquare(point, p) < d**2:
+			return False
+	return True
+	
+
+def distanceSquare(p1, p2):
+	return (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2
 
 
 bpy.context.scene.render.engine = 'CYCLES'
 
 
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
-locations = [(random.randrange(0, xmax/d, 1)*d, random.randrange(0, ymax/d, 1)*d, random.randrange(3, 10, 1)) for i in range(0, N)]
+locations = generateLocations([], N, [[-5, 5], [-5, 5]], 2*r1*scale)
 rotations = [(math.pi * random.random(), math.pi * random.random(), 0) for i in range(0, N)]
 names = ['bead' + str(i) for i in range(0, N)]
 
 bpy.ops.rigidbody.world_add()
 
+
+
 create_scene(
 	{'lamps': [
-		{'strength': 3000, 'target': names[1], 'location': (3, 3, 5)}, 
-		{'strength': 500, 'target': names[2], 'location': (0, -1, 5)},
-		{'strength': 1000, 'target': names[3], 'location': (-2, -2, 5)}],
+		{'strength': 3000, 'target': names[1], 'location': (5, 5, 4)}, 
+		{'strength': 500, 'target': names[2], 'location': (-5, 5, 5)},
+		{'strength': 500, 'target': names[2], 'location': (-5, -5, 3)},
+		{'strength': 1000, 'target': names[3], 'location': (5, -5, 6)}],
 	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9), 'size': 7},
 	'borders': [{'normal': 'x', 'pos': -5, 'len': 7}, {'normal': 'x', 'pos': 5, 'len': 7}, {'normal': 'y', 'pos': -5, 'len': 7}, {'normal': 'y', 'pos': 5, 'len': 7}],
 	'beads': {'names': names, 'locations': locations, 'rotations': rotations, 'materials': materials},
 	'cameras': [
-		{'name': 'camera-1', 'location': (0, 0, 8), 'target': names[2], 'focal-length': 20, 'dof': 15},
-		{'name': 'camera-2', 'location': (1, 2, 6), 'target': names[3]}
+		{'name': 'camera-1', 'location': (0, 0, 5), 'target': names[2], 'focal-length': 25, 'dof': 5},
+		{'name': 'camera-2', 'location': (0, -5, 4), 'target': names[3]},
+		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names[1]},
+		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names[2]},
+		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names[4]},
 	]})
+
 
 bpy.ops.ptcache.bake_all(bake=True)
 
@@ -277,6 +308,6 @@ capture({
 	'res-x': 500, 
 	'res-y': 500, 
 	'res-percent': 100,
-	'cameras': ['camera-1', 'camera-2'], 
+	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
 	'names': names,
 	'frames': [100, 150, 200]})
