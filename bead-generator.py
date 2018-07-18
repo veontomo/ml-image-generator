@@ -22,8 +22,8 @@ ymax = 5
 r1 = 0.2
 d = 2*r1
 z = 2*r1
-N = 100
-T = 3
+N = 20
+T = 5
 scale = 2
 random.seed(0.1)
 
@@ -73,15 +73,22 @@ def add_plane(config):
 
 	return plane
 
-def add_lamp(strength, trackObject, location):
-	bpy.ops.object.lamp_add(type='SPOT', radius=20, view_align=False, location=location, layers=layers)
+def add_lamp(config):
+	bpy.ops.object.lamp_add(type = config['type'] if 'type' in config else 'SPOT', 
+		radius=20, 
+		view_align=False, 
+		location=config['location'], 
+		layers=layers)
 	rawName = bpy.context.object.name
-	bpy.data.lamps[rawName].node_tree.nodes['Emission'].inputs[1].default_value = strength
+	if 'color' in config:
+		bpy.data.lamps[rawName].node_tree.nodes["Emission"].inputs[0].default_value = config['color']
+	bpy.data.lamps[rawName].node_tree.nodes['Emission'].inputs[1].default_value = config['strength']
 	lamp = bpy.data.objects[rawName] 
-	trackConstraint = lamp.constraints.new("TRACK_TO")
-	trackConstraint.target = trackObject
-	trackConstraint.track_axis = 'TRACK_NEGATIVE_Z'
-	trackConstraint.up_axis = 'UP_Y'
+	if 'target' in config:
+		trackConstraint = lamp.constraints.new("TRACK_TO")
+		trackConstraint.target = bpy.data.objects[config['target']]
+		trackConstraint.track_axis = 'TRACK_NEGATIVE_Z'
+		trackConstraint.up_axis = 'UP_Y'
 
 
 def add_camera(config):
@@ -238,8 +245,8 @@ def create_scene(config):
 	add_verical_borders(config['borders'])
 	create_cube((0, 0, 1), (0, 0, 0), "cube", beadsConfig['materials'][0])
 
-	for lamp in config['lamps']:
-		add_lamp(lamp['strength'], bpy.data.objects[lamp['target']], lamp['location'])
+	for lampConfig in config['lamps']:
+		add_lamp(lampConfig)
 	for camera in config['cameras']:
 		add_camera(camera)
 
@@ -282,10 +289,11 @@ bpy.ops.rigidbody.world_add()
 
 
 
+
 create_scene(
 	{'lamps': [
-		{'strength': 3000, 'target': names[1], 'location': (5, 5, 4)}, 
-		{'strength': 500, 'target': names[2], 'location': (-5, 5, 5)},
+		{'strength': 3000, 'target': names[1], 'location': (5, 5, 4), 'color': (0.0607904, 1, 0.153419, 1)}, 
+		{'strength': 10, 'target': names[2], 'location': (-5, 5, 5), 'type': 'SUN'},
 		{'strength': 500, 'target': names[2], 'location': (-5, -5, 3)},
 		{'strength': 1000, 'target': names[3], 'location': (5, -5, 6)}],
 	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9), 'size': 7},
@@ -305,9 +313,9 @@ bpy.ops.ptcache.bake_all(bake=True)
 capture({
 	'folder': currentDir + '/output', 
 	'name': 'scene1', 
-	'res-x': 500, 
-	'res-y': 500, 
+	'res-x': 380, 
+	'res-y': 380, 
 	'res-percent': 100,
 	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
 	'names': names,
-	'frames': [100, 150, 200]})
+	'frames': [150, 200]})
