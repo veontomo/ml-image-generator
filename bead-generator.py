@@ -17,34 +17,64 @@ print(sys.version_info)
 
 
 layers = tuple([True] + 19*[False])
-xmax = 5
-ymax = 5
 r1 = 0.2
 d = 2*r1
 z = 2*r1
-N = 20
+
+Qty = {'bead': 10, 'cube': 4, 'sphere': 3, 'cone': 2}
+N = sum(Qty.values())
 T = 5
 scale = 2
 random.seed(0.1)
 
-def create_bead(location, rotation, name, mat):
-	r2 = 0.8*r1
-	bpy.ops.mesh.primitive_torus_add(view_align=False, location=location, layers=layers, major_radius=r1, minor_radius=r2)
-	bpy.ops.transform.resize(value=(1, 1, scale), constraint_axis=(False, False, True), constraint_orientation='GLOBAL', mirror=False, proportional='DISABLED', proportional_edit_falloff='SMOOTH', proportional_size=1)
+def create_bead(config):
+	bpy.ops.mesh.primitive_torus_add(view_align=False, 
+		location=config['location'], 
+		layers=layers, 
+		major_radius=config['r1'], 
+		minor_radius=config['r2'])
+	bpy.ops.transform.resize(value=(1, 1, config['scale']), 
+		constraint_axis=(False, False, True), 
+		constraint_orientation='GLOBAL', 
+		mirror=False, 
+		proportional='DISABLED', 
+		proportional_edit_falloff='SMOOTH', 
+		proportional_size=1)
 	bpy.ops.rigidbody.objects_add()
 	bead = bpy.context.object
-	bead.name = name
-	bead.rotation_euler = rotation
-	bead.data.materials.append(mat)
+	bead.name = config['name']
+	bead.rotation_euler = config['rotation']
+	bead.data.materials.append(config['material'])
 	return bead
 
-def create_cube(location, rotation, name, mat):
-	bpy.ops.mesh.primitive_cube_add(radius=0.2, view_align=False, enter_editmode=False, location=location, layers=layers)
-	cube = bpy.context.object
-	cube.name = name
-	cube.rotation_euler = rotation
-	cube.data.materials.append(mat)
-	return cube
+def create_cube(config):
+	bpy.ops.mesh.primitive_cube_add(radius=config['radius'], 
+		view_align=False, 
+		enter_editmode=False, 
+		location=config['location'], 
+		layers=layers)
+#	bpy.ops.transform.resize(value=(1, 1, config['scale']), 
+#		constraint_axis=(False, False, True), 
+#		constraint_orientation='GLOBAL', 
+#		mirror=False, 
+#		proportional='DISABLED', 
+#		proportional_edit_falloff='SMOOTH', 
+#		proportional_size=1)
+	bpy.ops.rigidbody.objects_add()
+	obj = bpy.context.object
+	obj.name = config['name']
+	obj.rotation_euler = config['rotation']
+	obj.data.materials.append(config['material'])
+	return obj
+
+
+#def create_cube(location, rotation, name, mat):
+#	bpy.ops.mesh.primitive_cube_add(radius=0.2, view_align=False, enter_editmode=False, location=location, layers=layers)
+#	cube = bpy.context.object
+#	cube.name = name
+#	cube.rotation_euler = rotation
+#	cube.data.materials.append(mat)
+#	return cube
 
 
 def add_plane(config):
@@ -239,11 +269,22 @@ def add_verical_border(config):
 def create_scene(config):
 	beadsConfig = config['beads']
 	for name, pos, rot in zip(beadsConfig['names'], beadsConfig['locations'], beadsConfig['rotations']):
-		m = random.randint(0, T-1)
-		create_bead(pos, rot, name, beadsConfig['materials'][m])
+		create_bead({'location': pos, 
+			'r1': r1, 'r2': 0.8*r1, 
+			'rotation': rot, 
+			'name': name,
+			'scale': 2, 
+			'material': random.choice(beadsConfig['materials'])})
+	cubesConfig = config['cubes']
+	for name, pos, rot in zip(cubesConfig['names'], cubesConfig['locations'], cubesConfig['rotations']):
+		create_cube({'location': pos, 
+			'radius': r1,
+			'rotation': rot, 
+			'name': name,
+			'material': random.choice(cubesConfig['materials'])})
 	add_plane(config['plane'])
 	add_verical_borders(config['borders'])
-	create_cube((0, 0, 1), (0, 0, 0), "cube", beadsConfig['materials'][0])
+#	create_cube((0, 0, 1), (0, 0, 0), "cube", beadsConfig['materials'][0])
 
 	for lampConfig in config['lamps']:
 		add_lamp(lampConfig)
@@ -283,39 +324,46 @@ bpy.context.scene.render.engine = 'CYCLES'
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
 locations = generateLocations([], N, [[-5, 5], [-5, 5]], 2*r1*scale)
 rotations = [(math.pi * random.random(), math.pi * random.random(), 0) for i in range(0, N)]
-names = ['bead' + str(i) for i in range(0, N)]
+names = {i: [i + '-' + str(k) for k in range(0, Qty[i])] for i in Qty}
+
 
 bpy.ops.rigidbody.world_add()
 
-
-
+stoppers = [0, Qty['bead'], Qty['bead'] + Qty['cube']]
 
 create_scene(
 	{'lamps': [
-		{'strength': 3000, 'target': names[1], 'location': (5, 5, 4), 'color': (0.0607904, 1, 0.153419, 1)}, 
-		{'strength': 10, 'target': names[2], 'location': (-5, 5, 5), 'type': 'SUN'},
-		{'strength': 500, 'target': names[2], 'location': (-5, -5, 3)},
-		{'strength': 1000, 'target': names[3], 'location': (5, -5, 6)}],
+		{'strength': 3000, 'target': names['bead'][1], 'location': (5, 5, 4), 'color': (0.0607904, 1, 0.153419, 1)}, 
+		{'strength': 10, 'target': names['bead'][2], 'location': (-5, 5, 5), 'type': 'SUN'},
+		{'strength': 500, 'target': names['bead'][2], 'location': (-5, -5, 3)},
+		{'strength': 1000, 'target': names['bead'][3], 'location': (5, -5, 6)}],
 	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9), 'size': 7},
 	'borders': [{'normal': 'x', 'pos': -5, 'len': 7}, {'normal': 'x', 'pos': 5, 'len': 7}, {'normal': 'y', 'pos': -5, 'len': 7}, {'normal': 'y', 'pos': 5, 'len': 7}],
-	'beads': {'names': names, 'locations': locations, 'rotations': rotations, 'materials': materials},
+	'beads': {'names': names['bead'], 
+		'locations': locations[0:stoppers[1]], 
+		'rotations': rotations[0:stoppers[1]], 
+		'materials': materials},
+	'cubes': {'names': names['cube'], 
+		'locations': locations[stoppers[1]:stoppers[2]], 
+		'rotations': rotations[Qty['bead']:(Qty['bead'] + Qty['cube'])], 
+		'materials': materials},
 	'cameras': [
-		{'name': 'camera-1', 'location': (0, 0, 5), 'target': names[2], 'focal-length': 25, 'dof': 5},
-		{'name': 'camera-2', 'location': (0, -5, 4), 'target': names[3]},
-		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names[1]},
-		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names[2]},
-		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names[4]},
+		{'name': 'camera-1', 'location': (0, 0, 5), 'target': names['bead'][1], 'focal-length': 25, 'dof': 5},
+		{'name': 'camera-2', 'location': (0, -5, 4), 'target': names['bead'][3]},
+		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names['bead'][1]},
+		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names['bead'][2]},
+		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names['bead'][4]},
 	]})
 
 
 bpy.ops.ptcache.bake_all(bake=True)
 
-capture({
-	'folder': currentDir + '/output', 
-	'name': 'scene1', 
-	'res-x': 380, 
-	'res-y': 380, 
-	'res-percent': 100,
-	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
-	'names': names,
-	'frames': [150, 200]})
+#capture({
+#	'folder': currentDir + '/output', 
+#	'name': 'scene1', 
+#	'res-x': 380, 
+#	'res-y': 380, 
+#	'res-percent': 100,
+#	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
+#	'names': names,
+#	'frames': [150, 200]})
