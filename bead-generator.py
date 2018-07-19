@@ -21,7 +21,7 @@ r1 = 0.2
 d = 2*r1
 z = 2*r1
 
-Qty = {'bead': 10, 'cube': 4, 'sphere': 3, 'cone': 2}
+Qty = {'bead': 20, 'cube': 5, 'sphere': 0, 'cone': 0}
 N = sum(Qty.values())
 T = 5
 scale = 2
@@ -358,12 +358,12 @@ create_scene(
 
 bpy.ops.ptcache.bake_all(bake=True)
 
-#capture({
-#	'folder': currentDir + '/output', 
-#	'name': 'scene1', 
-#	'res-x': 380, 
-#	'res-y': 380, 
-#	'res-percent': 100,
-#	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
-#	'names': names,
-#	'frames': [150, 200]})
+capture({
+	'folder': currentDir + '/output', 
+	'name': 'scene1', 
+	'res-x': 380, 
+	'res-y': 380, 
+	'res-percent': 100,
+	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
+	'names': names['bead'],
+	'frames': [150, 200]})
