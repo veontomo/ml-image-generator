@@ -390,15 +390,25 @@ create_scene(
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names['bead'][4]},
 	]})
 
+def clear_scene(scene):
+	for obj in scene.objects:
+		scene.objects.unlink(obj)
+
 
 bpy.ops.ptcache.bake_all(bake=True)
 
-capture({
-	'folder': currentDir + '/output', 
-	'name': 'scene1', 
-	'res-x': 380, 
-	'res-y': 380, 
-	'res-percent': 100,
-	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
-	'names': names['bead'],
-	'frames': [150, 200]})
+#capture({
+#	'folder': currentDir + '/output', 
+#	'name': 'scene1', 
+#	'res-x': 100, 
+#	'res-y': 100, 
+#	'res-percent': 50,
+#	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
+#	'names': names['bead'],
+#	'frames': [100, 240]})
+
+clear_scene(bpy.data.scenes[0])
+#for n in names:
+#	print("removing all", n)
+#	for name in names[n]:
+#		bpy.data.scenes[0].objects.unlink(bpy.data.objects[name])
