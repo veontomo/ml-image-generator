@@ -16,7 +16,7 @@ print(sys.version_info)
 
 random.seed(0.1)
 
-def create_bead(config):
+def create_bead(scene, config):
 	bpy.ops.mesh.primitive_torus_add(view_align=False, 
 		location=config['location'], 
 		layers=layers, 
@@ -36,7 +36,7 @@ def create_bead(config):
 	bead.data.materials.append(config['material'])
 	return bead
 
-def create_cube(config):
+def create_cube(scene, config):
 	bpy.ops.mesh.primitive_cube_add(radius=config['radius'], 
 		view_align=False, 
 		enter_editmode=False, 
@@ -49,8 +49,8 @@ def create_cube(config):
 	obj.data.materials.append(config['material'])
 	return obj
 
-def create_sphere(config):
-	bpy.ops.mesh.primitive_uv_sphere_add(size=config['size'], 
+def create_sphere(scene, config):
+	bpy.ops.mesh.primitive_uv_sphere_add(size=config['radius'], 
 		view_align=False, 
 		enter_editmode=False, 
 		location=config['location'], 
@@ -61,7 +61,7 @@ def create_sphere(config):
 	obj.data.materials.append(config['material'])
 	return obj
 
-def create_cone(config):
+def create_cone(scene, config):
 	bpy.ops.mesh.primitive_cone_add(radius1=config['radius1'], 
 		radius2=config['radius2'], 
 		depth=config['radius1'], 
@@ -77,7 +77,7 @@ def create_cone(config):
 	return obj
 
 
-def add_plane(config):
+def add_plane(scene, config):
 	plane = bpy.ops.mesh.primitive_plane_add(view_align=False, enter_editmode=False, location=config['location'], layers=layers)
 	bpy.context.object.name = "surface"
 	size = config['size']
@@ -103,7 +103,7 @@ def add_plane(config):
 
 	return plane
 
-def add_lamp(config):
+def add_lamp(scene, config):
 	bpy.ops.object.lamp_add(type = config['type'] if 'type' in config else 'SPOT', 
 		radius=20, 
 		view_align=False, 
@@ -121,7 +121,7 @@ def add_lamp(config):
 		trackConstraint.up_axis = 'UP_Y'
 
 
-def add_camera(config):
+def add_camera(scene, config):
 	bpy.ops.object.camera_add(view_align=True, enter_editmode=False, location=config['location'], layers=layers)
 	camera = bpy.context.object
 	camera.name = config['name']
@@ -242,12 +242,12 @@ def create_info_file(config):
 		infoFile.write(', '.join([str(c) for c in box2d]) + '\n')
 	infoFile.close()
 
-def add_verical_borders(config):
+def add_verical_borders(scene, config):
 	print(config)
 	for key in config:
-		add_verical_border(key) 
+		add_verical_border(scene, key) 
 
-def add_verical_border(config):
+def add_verical_border(scene, config):
 	pos = config['pos']
 	plane = config['normal']
 	if plane == 'x':
@@ -267,50 +267,54 @@ def add_verical_border(config):
 
 
 def create_scene(config):
+	bpy.data.scenes[0].name = config['name']
+	scene = bpy.data.scenes[config['name']]
 	beadsConfig = config['beads']
 	for name, pos, rot in zip(beadsConfig['names'], beadsConfig['locations'], beadsConfig['rotations']):
-		create_bead({'location': pos, 
-			'r1': r1, 'r2': 0.8*r1, 
+		create_bead(scene, {'location': pos, 
+			'r1': beadsConfig['r1'], 
+			'r2': beadsConfig['r2'],
 			'rotation': rot, 
 			'name': name,
 			'scale': 2, 
 			'material': random.choice(beadsConfig['materials'])})
 	cubesConfig = config['cubes']
 	for name, pos, rot in zip(cubesConfig['names'], cubesConfig['locations'], cubesConfig['rotations']):
-		create_cube({'location': pos, 
-			'radius': 1.5*r1,
+		create_cube(scene, {'location': pos, 
+			'radius': cubesConfig['size'],
 			'rotation': rot, 
 			'name': name,
 			'material': random.choice(cubesConfig['materials'])})
 	sphereConfig = config['spheres']
 	for name, pos in zip(sphereConfig['names'], sphereConfig['locations']):
-		create_sphere({'location': pos, 
-			'size': 2*r1,
+		create_sphere(scene, {'location': pos, 
+			'radius': sphereConfig['radius'],
 			'name': name,
 			'material': random.choice(sphereConfig['materials'])})
 	coneConfig = config['cones']
 	for name, pos, rot in zip(coneConfig['names'], coneConfig['locations'], coneConfig['rotations']):
-		create_cone({'location': pos, 
-			'radius1': 2*r1,
-			'radius2': 0,
+		create_cone(scene, {'location': pos, 
+			'radius1': coneConfig['radius1'],
+			'radius2': coneConfig['radius2'],
 			'name': name,
 			'rotation': rot,
 			'material': random.choice(coneConfig['materials'])})
 
-	add_plane(config['plane'])
-	add_verical_borders(config['borders'])
+	add_plane(scene, config['plane'])
+	add_verical_borders(scene, config['borders'])
 
 	for lampConfig in config['lamps']:
-		add_lamp(lampConfig)
+		add_lamp(scene, lampConfig)
 	for camera in config['cameras']:
-		add_camera(camera)
+		add_camera(scene, camera)
+	return scene
 
 def generateLocations(locations, n, area, d):
 	""" Generate n point in the given area using locations as a seed. 
 	Distance between each pair of point should be greater that d.
 	area - array of two points (xmin, ymin) and (xmax, ymax)
 	"""
-	xmin, xmax, ymin, ymax, = area[0][0] + d, area[0][1] - d, area[1][0] + d, area[1][1] - d
+	xmin, xmax, ymin, ymax = area[0][0] + d, area[0][1] - d, area[1][0] + d, area[1][1] - d
 
 	if n == 0:
 		return locations
@@ -332,53 +336,66 @@ def distanceSquare(p1, p2):
 	return (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2
 
 
-bpy.context.scene.render.engine = 'CYCLES'
+def clear_scene(scene):
+	for obj in scene.objects:
+		print("removing object", obj.name, "from scene", scene.name)
+		scene.objects.unlink(obj)
+
+class Group:
+	def __init__(self, t, q):
+		self.type = t
+		self.qty = q
+
 
 
 layers = tuple([True] + 19*[False])
-r1 = 0.2
-d = 2*r1
-z = 2*r1
+r = 0.2
 
-Qty = [{'type': 'bead', 'qty': 50}, {'type': 'cube', 'qty': 7}, {'type': 'sphere', 'qty': 15}, {'type': 'cone', 'qty': 7}]
-v = [i['qty'] for i in Qty]
+Qty = [Group('bead', 50), Group('cube', 7), Group('sphere', 15), Group('cone', 7)]
+v = [i.qty for i in Qty]
 print(v)
 stoppers = [sum(v[:i]) for i in (range(0, len(v) + 1))]
 print(stoppers)
-N = sum([i['qty'] for i in Qty])
+N = sum(v)
 T = 5
-scale = 2
 
+bpy.context.scene.render.engine = 'CYCLES'
 materials = [create_material('TexMat' + str(i), (random.random(), random.random(), random.random(), random.randrange(0, 5, 1)/5)) for i in range(1, T+1)]
-locations = generateLocations([], N, [[-5, 5], [-5, 5]], 2*r1*scale)
+locations = generateLocations([], N, [[-5, 5], [-5, 5]], 4*r)
 rotations = [(math.pi * random.random(), math.pi * random.random(), 0) for i in range(0, N)]
-names = {i['type']: [i['type'] + '-' + str(k) for k in range(0, i['qty'])] for i in Qty}
+names = {i.type: [i.type + '-' + str(k) for k in range(0, i.qty)] for i in Qty}
 
-
-
-bpy.ops.rigidbody.world_add()
-
-create_scene(
-	{'lamps': [
+config = {
+	'name': 'scene-1',
+	'lamps': [
 		{'strength': 3000, 'target': names['bead'][1], 'location': (5, 5, 4), 'color': (0.0607904, 1, 0.153419, 1)}, 
 		{'strength': 10, 'target': names['bead'][2], 'location': (-5, 5, 5), 'type': 'SUN'},
 		{'strength': 500, 'target': names['bead'][2], 'location': (-5, -5, 3)},
 		{'strength': 1000, 'target': names['bead'][3], 'location': (5, -5, 6)}],
 	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9), 'size': 7},
-	'borders': [{'normal': 'x', 'pos': -5, 'len': 7}, {'normal': 'x', 'pos': 5, 'len': 7}, {'normal': 'y', 'pos': -5, 'len': 7}, {'normal': 'y', 'pos': 5, 'len': 7}],
+	'borders': [{'normal': 'x', 'pos': -5, 'len': 7}, 
+		{'normal': 'x', 'pos': 5, 'len': 7}, 
+		{'normal': 'y', 'pos': -5, 'len': 7}, 
+		{'normal': 'y', 'pos': 5, 'len': 7}],
 	'beads': {'names': names['bead'], 
 		'locations': locations[0:stoppers[1]], 
-		'rotations': rotations[0:stoppers[1]], 
+		'rotations': rotations[0:stoppers[1]],
+		'r1': r,
+		'r2': 0.8*r, 
 		'materials': materials},
 	'cubes': {'names': names['cube'], 
+		'size': 1.5*r,
 		'locations': locations[stoppers[1]:stoppers[2]], 
 		'rotations': rotations[stoppers[1]:stoppers[2]], 
 		'materials': materials},
 	'spheres': {'names': names['sphere'], 
+		'radius': r,
 		'locations': locations[stoppers[2]:stoppers[3]], 
 		'rotations': rotations[stoppers[2]:stoppers[3]], 
 		'materials': materials},
-	'cones': {'names': names['cone'], 
+	'cones': {'names': names['cone'],
+		'radius1': 1.5*r,
+		'radius2': 0,
 		'locations': locations[stoppers[3]:stoppers[4]], 
 		'rotations': rotations[stoppers[3]:stoppers[4]], 
 		'materials': materials},
@@ -388,13 +405,10 @@ create_scene(
 		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names['bead'][1]},
 		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names['bead'][2]},
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names['bead'][4]},
-	]})
+	]}
 
-def clear_scene(scene):
-	for obj in scene.objects:
-		scene.objects.unlink(obj)
-
-
+bpy.ops.rigidbody.world_add()
+scene = create_scene(config)
 bpy.ops.ptcache.bake_all(bake=True)
 
 #capture({
@@ -407,8 +421,4 @@ bpy.ops.ptcache.bake_all(bake=True)
 #	'names': names['bead'],
 #	'frames': [100, 240]})
 
-clear_scene(bpy.data.scenes[0])
-#for n in names:
-#	print("removing all", n)
-#	for name in names[n]:
-#		bpy.data.scenes[0].objects.unlink(bpy.data.objects[name])
+clear_scene(scene)
