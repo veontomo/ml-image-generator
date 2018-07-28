@@ -6,6 +6,8 @@ import random
 import mathutils
 import sys
 import time
+from io import BytesIO
+from PIL import Image, ImageDraw
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 
 # this file's folder
@@ -66,37 +68,6 @@ def create_materialWOOD(name, color_rgba):
 	
 	return mat
 
-def capture(config):
-	bpy.context.scene.render.image_settings.color_mode = 'RGB'
-	sceneKey = bpy.data.scenes.keys()[0]
-	scene = bpy.data.scenes[sceneKey]
-	for cameraName in config['cameras']:
-		scene.camera = bpy.data.objects[cameraName]
-		scene.render.image_settings.file_format = 'JPEG'
-		bpy.context.scene.render.resolution_x = config['res-x']
-		bpy.context.scene.render.resolution_y = config['res-y']
-		bpy.context.scene.render.resolution_percentage = config['res-percent']
-
-		for frame in config['frames']:
-			filename = config['folder'] + '/' + config['name'] + '-' + cameraName + '-f-' + str(frame)
-			scene.frame_set(frame)
-			scene.render.filepath = filename
-			bpy.ops.render.render(animation=False, write_still=True)
-
-
-			config2 = {
-				'folder': config['folder'], 
-				'name': filename,
-				'cameraName': cameraName,
-				'objects': config['names'],
-				'frame': frame
-			}
-
-			create_info_file(config2)
-
-
-
-
 def generateLocations(locations, n, area, d):
 	""" Generate n point in the given area using locations as a seed. 
 	Distance between each pair of point should be greater that d.
@@ -122,12 +93,6 @@ def distant(point, points, d):
 
 def distanceSquare(p1, p2):
 	return (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2
-
-
-def clear_scene(scene):
-	for obj in scene.objects:
-		print("removing object", obj.name, "from scene", scene.name)
-		scene.objects.unlink(obj)
 
 class Group:
 	def __init__(self, t, q):
@@ -236,7 +201,21 @@ class MyScene:
 					'frame': frame
 				}
 
-				self.create_info_file(config2)
+				dataFilePath = self.create_info_file(config2)
+				print('dataFilePath', dataFilePath)
+				origImage = filename + '.jpg'
+				dataFile = open(dataFilePath, 'r')
+				lines = dataFile.readlines()
+				dataFile.close()
+				img = Image.open(origImage)
+				h = img.size[1]
+				draw = ImageDraw.Draw(img)
+				for line in lines[1:]:
+					coords = [int(l.strip()) for l in line.split(',')]
+					draw.rectangle(((coords[0], h - coords[1]), (coords[2], h-coords[3])))
+				buffer = BytesIO()
+				img.save(buffer, format = "jpeg")
+				open(filename + '-box.jpg', "wb").write(buffer.getvalue())
 
 	def create_info_file(self, config):
 		filename = config['name'] + '-data.txt'
@@ -266,6 +245,8 @@ class MyScene:
 			box2d = [minX, minY, maxX, maxY]
 			infoFile.write(', '.join([str(c) for c in box2d]) + '\n')
 		infoFile.close()
+		return filename
+
 
 
 	def create_bead(self, scene, config):
@@ -399,8 +380,6 @@ class MyScene:
 
 
 
-
-
 layers = tuple([True] + 19*[False])
 r = 0.2
 
@@ -453,15 +432,15 @@ config = {
 		'rotations': rotations[stoppers[3]:stoppers[4]], 
 		'materials': materials},
 	'cameras': [
-#		{'name': 'camera-1', 'location': (0, 0, 5), 'target': names['bead'][1], 'focal-length': 25, 'dof': 5},
-#		{'name': 'camera-2', 'location': (0, -5, 4), 'target': names['bead'][3]},
-#		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names['bead'][1]},
-#		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names['bead'][2]},
+		{'name': 'camera-1', 'location': (0, 0, 5), 'target': names['bead'][1], 'focal-length': 25, 'dof': 5},
+		{'name': 'camera-2', 'location': (0, -5, 4), 'target': names['bead'][3]},
+		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names['bead'][1]},
+		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names['bead'][2]},
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names['bead'][4]}],
 	'capture': {
 		'folder': currentDir + '/output', 
-		'res-x': 300, 
-		'res-y': 300, 
+		'res-x': 400, 
+		'res-y': 400, 
 		'res-percent': 100,
 		'frames': [100, 240]},
 	'track': {
@@ -471,21 +450,7 @@ config = {
 	}
 
 
-
-#scene = create_scene(config)
-
 s = MyScene(config)
 s.build()
 s.capture()
 s.clear()
-
-#capture({
-#	'folder': currentDir + '/output', 
-#	'name': 'scene1', 
-#	'res-x': 100, 
-#	'res-y': 100, 
-#	'res-percent': 50,
-#	'cameras': ['camera-1', 'camera-2', 'camera-3', 'camera-4', 'camera-5'], 
-#	'names': names['bead'],
-#	'frames': [100, 240]})
-
