@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 currentDir = os.path.dirname(os.path.abspath(__file__))
 workingDir = currentDir + '/output'
 suffix = '-data'
-files = ["scene1-camera-1-f-150","scene1-camera-1-f-200","scene1-camera-2-f-150","scene1-camera-2-f-200","scene1-camera-3-f-150","scene1-camera-3-f-200","scene1-camera-4-f-150","scene1-camera-4-f-200","scene1-camera-5-f-150","scene1-camera-5-f-200"]
+files = ["scene-1-camera-5-100","scene-1-camera-5-240"]
 
 for file in files:
 	origImage = workingDir + '/' + file + '.jpg'
