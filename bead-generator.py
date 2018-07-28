@@ -137,6 +137,7 @@ def add_camera(scene, config):
 		trackConstraint.target = bpy.data.objects[config['target']]
 		trackConstraint.track_axis = 'TRACK_NEGATIVE_Z'
 		trackConstraint.up_axis = 'UP_Y'
+	print("added a camera with name:", camera.name)
 
 def create_material(name, color_rgba):
 	mat = bpy.data.materials.new(name)
@@ -266,48 +267,6 @@ def add_verical_border(scene, config):
 	bpy.context.object.hide_render = True
 
 
-def create_scene(config):
-	bpy.data.scenes[0].name = config['name']
-	scene = bpy.data.scenes[config['name']]
-	beadsConfig = config['beads']
-	for name, pos, rot in zip(beadsConfig['names'], beadsConfig['locations'], beadsConfig['rotations']):
-		create_bead(scene, {'location': pos, 
-			'r1': beadsConfig['r1'], 
-			'r2': beadsConfig['r2'],
-			'rotation': rot, 
-			'name': name,
-			'scale': 2, 
-			'material': random.choice(beadsConfig['materials'])})
-	cubesConfig = config['cubes']
-	for name, pos, rot in zip(cubesConfig['names'], cubesConfig['locations'], cubesConfig['rotations']):
-		create_cube(scene, {'location': pos, 
-			'radius': cubesConfig['size'],
-			'rotation': rot, 
-			'name': name,
-			'material': random.choice(cubesConfig['materials'])})
-	sphereConfig = config['spheres']
-	for name, pos in zip(sphereConfig['names'], sphereConfig['locations']):
-		create_sphere(scene, {'location': pos, 
-			'radius': sphereConfig['radius'],
-			'name': name,
-			'material': random.choice(sphereConfig['materials'])})
-	coneConfig = config['cones']
-	for name, pos, rot in zip(coneConfig['names'], coneConfig['locations'], coneConfig['rotations']):
-		create_cone(scene, {'location': pos, 
-			'radius1': coneConfig['radius1'],
-			'radius2': coneConfig['radius2'],
-			'name': name,
-			'rotation': rot,
-			'material': random.choice(coneConfig['materials'])})
-
-	add_plane(scene, config['plane'])
-	add_verical_borders(scene, config['borders'])
-
-	for lampConfig in config['lamps']:
-		add_lamp(scene, lampConfig)
-	for camera in config['cameras']:
-		add_camera(scene, camera)
-	return scene
 
 def generateLocations(locations, n, area, d):
 	""" Generate n point in the given area using locations as a seed. 
@@ -345,6 +304,84 @@ class Group:
 	def __init__(self, t, q):
 		self.type = t
 		self.qty = q
+
+class MyScene:
+	def __init__(self, config):
+		self.config = config
+	
+	def createScene(self, config):
+		bpy.data.scenes[0].name = config['name']
+		scene = bpy.data.scenes[config['name']]
+		beadsConfig = config['beads']
+		for name, pos, rot in zip(beadsConfig['names'], beadsConfig['locations'], beadsConfig['rotations']):
+			create_bead(scene, {'location': pos, 
+				'r1': beadsConfig['r1'], 
+				'r2': beadsConfig['r2'],
+				'rotation': rot, 
+				'name': name,
+				'scale': 2, 
+				'material': random.choice(beadsConfig['materials'])})
+		cubesConfig = config['cubes']
+		for name, pos, rot in zip(cubesConfig['names'], cubesConfig['locations'], cubesConfig['rotations']):
+			create_cube(scene, {'location': pos, 
+				'radius': cubesConfig['size'],
+				'rotation': rot, 
+				'name': name,
+				'material': random.choice(cubesConfig['materials'])})
+		sphereConfig = config['spheres']
+		for name, pos in zip(sphereConfig['names'], sphereConfig['locations']):
+			create_sphere(scene, {'location': pos, 
+				'radius': sphereConfig['radius'],
+				'name': name,
+				'material': random.choice(sphereConfig['materials'])})
+		coneConfig = config['cones']
+		for name, pos, rot in zip(coneConfig['names'], coneConfig['locations'], coneConfig['rotations']):
+			create_cone(scene, {'location': pos, 
+				'radius1': coneConfig['radius1'],
+				'radius2': coneConfig['radius2'],
+				'name': name,
+				'rotation': rot,
+				'material': random.choice(coneConfig['materials'])})
+
+		add_plane(scene, config['plane'])
+		add_verical_borders(scene, config['borders'])
+
+		for lampConfig in config['lamps']:
+			add_lamp(scene, lampConfig)
+		for camera in config['cameras']:
+			add_camera(scene, camera)
+		return scene
+
+	def build(self):
+		bpy.ops.rigidbody.world_add()
+		self.scene = self.createScene(self.config)
+		bpy.ops.ptcache.bake_all(bake=True)
+
+	def capture(self):
+		bpy.context.scene.render.image_settings.color_mode = 'RGB'
+		scene = bpy.data.scenes[self.config['name']]
+		# for some reason, if one accesses the camera through 'bpy.data.objects' and through 'bpy.data.cameras',
+		# the names do not concide.
+		for name in [c['name'] for c in self.config['cameras']]:
+			print("camera name:", name)
+			scene.camera = bpy.data.objects[name]
+			scene.render.image_settings.file_format = 'JPEG'
+			bpy.context.scene.render.resolution_x = self.config['capture']['res-x']
+			bpy.context.scene.render.resolution_y = self.config['capture']['res-y']
+			bpy.context.scene.render.resolution_percentage = self.config['capture']['res-percent']
+
+			for frame in self.config['capture']['frames']:
+				filename = self.config['capture']['folder'] + '/' + scene.name + '-' + name + '-' + str(frame)
+				scene.frame_set(frame)
+				scene.render.filepath = filename
+				bpy.ops.render.render(animation=False, write_still=True)
+
+	def clear(self):
+		for obj in self.scene.objects:
+			print("removing object", obj.name, "from scene", self.scene.name)
+			self.scene.objects.unlink(obj)
+
+
 
 
 
@@ -401,15 +438,27 @@ config = {
 		'materials': materials},
 	'cameras': [
 		{'name': 'camera-1', 'location': (0, 0, 5), 'target': names['bead'][1], 'focal-length': 25, 'dof': 5},
-		{'name': 'camera-2', 'location': (0, -5, 4), 'target': names['bead'][3]},
-		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names['bead'][1]},
-		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names['bead'][2]},
-		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names['bead'][4]},
-	]}
+#		{'name': 'camera-2', 'location': (0, -5, 4), 'target': names['bead'][3]},
+#		{'name': 'camera-3', 'location': (5, 0, 4), 'target': names['bead'][1]},
+#		{'name': 'camera-4', 'location': (0, 5, 6), 'target': names['bead'][2]},
+		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names['bead'][4]}],
+	'capture': {
+		'folder': currentDir + '/output', 
+		'res-x': 100, 
+		'res-y': 100, 
+		'res-percent': 50,
+		'names': names['bead'],
+		'frames': [100, 240]}
+	}
 
-bpy.ops.rigidbody.world_add()
-scene = create_scene(config)
-bpy.ops.ptcache.bake_all(bake=True)
+
+
+#scene = create_scene(config)
+
+s = MyScene(config)
+s.build()
+s.capture()
+s.clear()
 
 #capture({
 #	'folder': currentDir + '/output', 
@@ -421,4 +470,3 @@ bpy.ops.ptcache.bake_all(bake=True)
 #	'names': names['bead'],
 #	'frames': [100, 240]})
 
-clear_scene(scene)
