@@ -137,8 +137,8 @@ class MyScene:
 				'rotation': rot,
 				'material': random.choice(coneConfig['materials'])})
 
-		self.add_plane(scene, config['plane'])
-		self.add_vertical_borders(scene, config['borders'])
+		self.add_plane(scene)
+		self.add_vertical_borders(scene)
 
 		for lampConfig in self.config['lamps']:
 			self.add_lamp(scene, lampConfig)
@@ -146,9 +146,12 @@ class MyScene:
 			self.add_camera(scene, camera)
 		return scene
 
-	def add_vertical_borders(self, scene, config):
-		for key in config:
-			self.add_vertical_border(scene, key) 
+	def add_vertical_borders(self, scene):
+			region = self.config['region']
+			self.add_vertical_border(scene, {'normal': 'x', 'pos': region['x'][0], 'len': 7}) 
+			self.add_vertical_border(scene, {'normal': 'x', 'pos': region['x'][1], 'len': 7}) 
+			self.add_vertical_border(scene, {'normal': 'y', 'pos': region['y'][0], 'len': 7}) 
+			self.add_vertical_border(scene, {'normal': 'y', 'pos': region['y'][1], 'len': 7}) 
 
 	def add_vertical_border(self, scene, config):
 		pos = config['pos']
@@ -310,16 +313,17 @@ class MyScene:
 		return obj
 
 
-	def add_plane(self, scene, config):
-		plane = bpy.ops.mesh.primitive_plane_add(view_align=False, enter_editmode=False, location=config['location'], layers=layers)
+	def add_plane(self, scene):
+		plane = bpy.ops.mesh.primitive_plane_add(view_align=False, enter_editmode=False, location=(0, 0, 0), layers=layers)
 		bpy.context.object.name = "surface"
-		size = config['size']
-		bpy.ops.transform.resize(value=(size, size, size), constraint_axis=(False, False, False))
+		region = self.config['region'];
+		size = (1.5*(region['x'][1] - region['x'][0]), 1.5*(region['y'][1] - region['y'][0]), 1)
+		bpy.ops.transform.resize(value=size, constraint_axis=(False, False, False))
 		bpy.ops.rigidbody.objects_add()
 		bpy.context.object.rigid_body.enabled = False
 		mat = bpy.data.materials.new('surface-wood')
 		mat.use_nodes = True
-		mat.node_tree.nodes["Diffuse BSDF"].inputs[0].default_value = config['color']
+		mat.node_tree.nodes["Diffuse BSDF"].inputs[0].default_value = self.config['background-color']
 		mat.node_tree.nodes["Diffuse BSDF"].inputs[1].default_value = 2
 		
 		# Create procedural texture 
@@ -399,16 +403,14 @@ names = {i.type: [i.type + '-' + str(k) for k in range(0, i.qty)] for i in Qty}
 
 config = {
 	'name': 'scene-1',
+	'region': {'x': [-5, 5], 'y': [-5, 5]},
+	'background-color': (0.4, 0.2, 0.1, 0.9),
 	'lamps': [
 		{'strength': 3000, 'target': names['bead'][1], 'location': (5, 5, 4), 'color': (0.0607904, 1, 0.153419, 1)}, 
 		{'strength': 10, 'target': names['bead'][2], 'location': (-5, 5, 5), 'type': 'SUN'},
 		{'strength': 500, 'target': names['bead'][2], 'location': (-5, -5, 3)},
 		{'strength': 1000, 'target': names['bead'][3], 'location': (5, -5, 6)}],
-	'plane': {'location': (0, 0, 0), 'color': (0.4, 0.2, 0.1, 0.9), 'size': 7},
-	'borders': [{'normal': 'x', 'pos': -5, 'len': 7}, 
-		{'normal': 'x', 'pos': 5, 'len': 7}, 
-		{'normal': 'y', 'pos': -5, 'len': 7}, 
-		{'normal': 'y', 'pos': 5, 'len': 7}],
+	
 	'beads': {'names': names['bead'], 
 		'locations': locations[0:stoppers[1]], 
 		'rotations': rotations[0:stoppers[1]],
@@ -439,9 +441,9 @@ config = {
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': names['bead'][4]}],
 	'capture': {
 		'folder': currentDir + '/output', 
-		'res-x': 400, 
-		'res-y': 400, 
-		'res-percent': 100,
+		'res-x': 100, 
+		'res-y': 100, 
+		'res-percent': 20,
 		'frames': [100, 240]},
 	'track': {
 		'folder': currentDir + '/output', 
@@ -454,3 +456,12 @@ s = MyScene(config)
 s.build()
 s.capture()
 s.clear()
+
+config['name'] = 'scene-2'
+config['plane']['color'] = (0.3, 0.1, 0.2, 0.7)
+config['capture']['frames'] = [100, 200]
+
+#s2 = MyScene(config)
+#s2.build()
+#s2.capture()
+#s2.clear()
