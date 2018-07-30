@@ -177,7 +177,7 @@ class MyScene:
 
 
 	def build(self):
-		# bpy.ops.rigidbody.world_add()
+		bpy.ops.rigidbody.world_add()
 		self.scene = self.createScene(self.config)
 		bpy.ops.ptcache.bake_all(bake=True)
 
@@ -390,7 +390,7 @@ class MyScene:
 		for obj in self.scene.objects:
 			print("removing object", obj.name, "from scene", self.scene.name)
 			self.scene.objects.unlink(obj)
-
+		bpy.ops.rigidbody.world_remove()
 
 
 layers = tuple([True] + 19*[False])
@@ -428,17 +428,17 @@ config = {
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': 'bead-4'}],
 	'capture': {
 		'folder': currentDir + '/output', 
-		'res-x': 400, 
-		'res-y': 400, 
-		'res-percent': 100,
+		'res-x': 200, 
+		'res-y': 200, 
+		'res-percent': 80,
 		'frames': [100, 240]}		
 	}
 
-bpy.ops.rigidbody.world_add()
+
 
 s = MyScene(config)
 s.build()
-#s.capture()
+s.capture()
 s.clear()
 
 config['name'] = 'scene-2'
@@ -447,5 +447,5 @@ config['beads']['qty'] = 10
 
 s2 = MyScene(config)
 s2.build()
-#s2.capture()
-#s2.clear()
+s2.capture()
+s2.clear()
