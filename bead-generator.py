@@ -401,7 +401,7 @@ config = {
 	'region': {'x': [-5, 5], 'y': [-5, 5]},
 	'background-color': (0.4, 0.2, 0.1, 0.9),
 	'typicalLength': r,
-	'numberOfmaterials': 5,
+	'numberOfmaterials': 1,
 	'lamps': [
 		{'strength': 3000, 'direction': (0, 0, 0), 'location': (5, 5, 4), 'color': (0.0607904, 1, 0.153419, 1)}, 
 		{'strength': 10, 'direction': (-3, 3, 0), 'location': (-5, 5, 5), 'type': 'SUN'},
@@ -409,28 +409,30 @@ config = {
 		{'strength': 1000, 'direction': (3, -2, 0), 'location': (5, -5, 6)}],
 	
 	'beads': {
-		'qty': 20,
+		'qty': 50,
 		'r1': r,
 		'r2': 0.8*r},
 	'cubes': {
-		'qty': 30,
+		'qty': 0,
 		'edge': r},
-	'spheres': {'qty': 15, 
+	'spheres': {
+		'qty': 0, 
 		'radius': 1.5*r},
-	'cones': {'qty': 10,
+	'cones': {
+		'qty': 0,
 		'radius1': 1.5*r,
 		'radius2': 0},
 	'cameras': [
 		{'name': 'camera-1', 'location': (0, 0, 5), 'target': 'bead-1', 'focal-length': 25, 'dof': 5},
-#		{'name': 'camera-2', 'location': (0, -5, 4), 'target': 'bead-3'},
-#		{'name': 'camera-3', 'location': (5, 0, 4), 'target': 'bead-2'},
-#		{'name': 'camera-4', 'location': (0, 5, 6), 'target': 'bead-2'},
+		{'name': 'camera-2', 'location': (0, -5, 4), 'target': 'bead-3'},
+		{'name': 'camera-3', 'location': (5, 0, 4), 'target': 'bead-2'},
+		{'name': 'camera-4', 'location': (0, 5, 6), 'target': 'bead-2'},
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': 'bead-4'}],
 	'capture': {
 		'folder': currentDir + '/output', 
-		'res-x': 200, 
-		'res-y': 200, 
-		'res-percent': 80,
+		'res-x': 400, 
+		'res-y': 400, 
+		'res-percent': 100,
 		'frames': [100, 240]}		
 	}
 
@@ -441,11 +443,19 @@ s.build()
 s.capture()
 s.clear()
 
-config['name'] = 'scene-2'
-config['background-color'] = (0.1, 0.3, 0.0, 0.8)
-config['beads']['qty'] = 10
-
-s2 = MyScene(config)
-s2.build()
-s2.capture()
-s2.clear()
+counter = 2
+for beads in range(5, 105, 10):
+	for cones in range(0, 10, 5):
+		for cubes in range(0, 10, 5):
+			for spheres in range(0, 50, 10):
+				config['name'] = 'scene-' + str(counter)
+				config['background-color'] = (random.random(), random.random(), random.random(), random.random())
+				config['beads']['qty'] = beads
+				config['cones']['qty'] = cones
+				config['spheres']['qty'] = spheres
+				config['cubes']['qty'] = cubes
+				s = MyScene(config)
+				s.build()
+				s.capture()
+				s.clear()
+				counter = counter + 1
