@@ -454,6 +454,7 @@ for beads in range(5, 105, 10):
 				config['cones']['qty'] = cones
 				config['spheres']['qty'] = spheres
 				config['cubes']['qty'] = cubes
+				config['numberOfmaterials'] = random.randint(1, 20)
 				s = MyScene(config)
 				s.build()
 				s.capture()
