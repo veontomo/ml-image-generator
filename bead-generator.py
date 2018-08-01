@@ -447,20 +447,21 @@ config = {
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': 'bead-4'}],
 	'capture': {
 		'folder': currentDir + '/output', 
-		'res-x': 398, 
-		'res-y': 398, 
+		'res-x': 400, 
+		'res-y': 400, 
 		'res-percent': 100,
 		'frames': [100, 240]}		
 	}
 
 
-counter = 1
+counter = 0
 for beads in range(0, 200, 10):
 	for k in range(0, 10):
+		counter = counter + 1
 		config['name'] = 'scene-' + str(counter)
 		config['background-color'] = (random.random(), random.random(), random.random(), random.random())
 		print('background-color:', config['background-color'])
-		config['beads']['qty'] =  max(0, random.randint(-30, 20))
+		config['beads']['qty'] =  beads
 		config['cones']['qty'] =  max(0, random.randint(-30, 20))
 		config['spheres']['qty'] = max(0, random.randint(-30, 20))
 		config['cubes']['qty'] =  max(0, random.randint(-30, 20))
@@ -469,7 +470,6 @@ for beads in range(0, 200, 10):
 		s.build()
 		s.capture()
 		s.clear()
-		counter = counter + 1
 
 
 
