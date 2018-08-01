@@ -317,13 +317,14 @@ class MyScene:
 
 	def add_plane(self, scene):
 		plane = bpy.ops.mesh.primitive_plane_add(view_align=False, enter_editmode=False, location=(0, 0, 0), layers=layers)
-		bpy.context.object.name = "surface"
+		name = 'surface-' + self.config['name']
+		bpy.context.object.name = name
 		region = self.config['region'];
 		size = (1.5*(region['x'][1] - region['x'][0]), 1.5*(region['y'][1] - region['y'][0]), 1)
 		bpy.ops.transform.resize(value=size, constraint_axis=(False, False, False))
 		bpy.ops.rigidbody.objects_add()
 		bpy.context.object.rigid_body.enabled = False
-		mat = bpy.data.materials.new('surface-wood')
+		mat = bpy.data.materials.new(name)
 		mat.use_nodes = True
 		mat.node_tree.nodes["Diffuse BSDF"].inputs[0].default_value = self.config['background-color']
 		mat.node_tree.nodes["Diffuse BSDF"].inputs[1].default_value = 2
@@ -338,7 +339,7 @@ class MyScene:
 		mtex.texture_coords = 'UV'
 		mtex.use_map_color_diffuse = False
 		mtex.use_map_normal = True 
-		bpy.data.objects['surface'].data.materials.append(mat)
+		bpy.data.objects[name].data.materials.append(mat)
 
 		return plane
 
@@ -378,17 +379,33 @@ class MyScene:
 			camera.data.dof_distance = config['dof']
 
 		camera.rotation_euler = (0, 0, math.pi/2)
-		if 'target' in config:
+		if ('target' in config) and (config['target'] in bpy.data.objects):
 			trackConstraint = camera.constraints.new("TRACK_TO")
 			trackConstraint.target = bpy.data.objects[config['target']]
 			trackConstraint.track_axis = 'TRACK_NEGATIVE_Z'
 			trackConstraint.up_axis = 'UP_Y'
-		print("added a camera with name:", camera.name)
+		else:
+			print('No target set for camera ' + camera.name)
 
 
 	def clear(self):
+		#Remove all meshes
+		for mesh in bpy.data.meshes:
+			bpy.data.meshes.remove(mesh)
+
+		#Remove all lamps
+		for lamp in bpy.data.lamps:
+			bpy.data.lamps.remove(lamp)
+
+		#Remove all cameras
+		for camera in bpy.data.cameras:
+			bpy.data.cameras.remove(camera)
+
+		#Remove all materials
+		for material in bpy.data.materials:
+			bpy.data.materials.remove(material)
+		
 		for obj in self.scene.objects:
-			print("removing object", obj.name, "from scene", self.scene.name)
 			self.scene.objects.unlink(obj)
 		bpy.ops.rigidbody.world_remove()
 
@@ -430,33 +447,30 @@ config = {
 		{'name': 'camera-5', 'location': (-5, 0, 5), 'target': 'bead-4'}],
 	'capture': {
 		'folder': currentDir + '/output', 
-		'res-x': 400, 
-		'res-y': 400, 
+		'res-x': 398, 
+		'res-y': 398, 
 		'res-percent': 100,
 		'frames': [100, 240]}		
 	}
 
 
+counter = 1
+for beads in range(0, 200, 10):
+	for k in range(0, 10):
+		config['name'] = 'scene-' + str(counter)
+		config['background-color'] = (random.random(), random.random(), random.random(), random.random())
+		print('background-color:', config['background-color'])
+		config['beads']['qty'] =  max(0, random.randint(-30, 20))
+		config['cones']['qty'] =  max(0, random.randint(-30, 20))
+		config['spheres']['qty'] = max(0, random.randint(-30, 20))
+		config['cubes']['qty'] =  max(0, random.randint(-30, 20))
+		config['numberOfmaterials'] = random.randint(1, 20)
+		s = MyScene(config)
+		s.build()
+		s.capture()
+		s.clear()
+		counter = counter + 1
 
-s = MyScene(config)
-s.build()
-s.capture()
-s.clear()
 
-counter = 2
-for beads in range(5, 105, 10):
-	for cones in range(0, 10, 5):
-		for cubes in range(0, 10, 5):
-			for spheres in range(0, 50, 10):
-				config['name'] = 'scene-' + str(counter)
-				config['background-color'] = (random.random(), random.random(), random.random(), random.random())
-				config['beads']['qty'] = beads
-				config['cones']['qty'] = cones
-				config['spheres']['qty'] = spheres
-				config['cubes']['qty'] = cubes
-				config['numberOfmaterials'] = random.randint(1, 20)
-				s = MyScene(config)
-				s.build()
-				s.capture()
-				s.clear()
-				counter = counter + 1
+
+
