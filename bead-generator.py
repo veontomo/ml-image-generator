@@ -9,7 +9,6 @@ import time
 from io import BytesIO
 from PIL import Image, ImageDraw
 from bpy_extras.view3d_utils import location_3d_to_region_2d
-
 # this file's folder
 currentDir = os.path.dirname(os.path.abspath(__file__))
 bpy.ops.object.delete(use_global=False)
@@ -453,7 +452,7 @@ config = {
 		'frames': [100, 240]}		
 	}
 
-
+sleepTimeSec = 10
 counter = 57
 for counter in range(0, 200):
 	beads = 10 * (counter // 10)
@@ -472,6 +471,8 @@ for counter in range(0, 200):
 	s.build()
 	s.capture()
 	s.clear()
+	print('sleeping to cool down the cpu...')
+	time.sleep(sleepTimeSec)
 
 
 
