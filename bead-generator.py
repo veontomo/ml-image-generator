@@ -195,7 +195,6 @@ class MyScene:
 
 			for frame in self.config['capture']['frames']:
 				filename = self.config['capture']['folder'] + '/' + scene.name + '-' + name + '-' + str(frame)
-				print('file name:', filename)
 				scene.frame_set(frame)
 				scene.render.filepath = filename
 				bpy.ops.render.render(animation=False, write_still=True)
@@ -207,7 +206,6 @@ class MyScene:
 				}
 
 				dataFilePath = self.create_info_file(config2)
-				print('dataFilePath', dataFilePath)
 				origImage = filename + '.jpg'
 				dataFile = open(dataFilePath, 'r')
 				lines = dataFile.readlines()
@@ -221,10 +219,10 @@ class MyScene:
 				buffer = BytesIO()
 				img.save(buffer, format = "jpeg")
 				open(filename + '-box.jpg', "wb").write(buffer.getvalue())
+				print('File ' + filename + ' is ready...')
 
 	def create_info_file(self, config):
 		filename = config['name'] + '-data.txt'
-		print('info file: ', filename)
 		infoFile = open(filename, 'w')
 		infoFile.write('# xmin, ymin, xmax, ymax\n')
 
@@ -452,16 +450,12 @@ config = {
 		'frames': [100, 240]}		
 	}
 
-sleepTimeSec = 10
-counter = 57
-for counter in range(0, 200):
+sleepTimeSec = 20
+for counter in range(57, 200):
 	beads = 10 * (counter // 10)
-	print('beads', beads)
-	print('k', k)
-	counter = counter + 1
+	print('counter', counter, 'beads', beads)
 	config['name'] = 'scene-' + str(counter)
 	config['background-color'] = (random.random(), random.random(), random.random(), random.random())
-	print('background-color:', config['background-color'])
 	config['beads']['qty'] =  beads
 	config['cones']['qty'] =  max(0, random.randint(-30, 20))
 	config['spheres']['qty'] = max(0, random.randint(-30, 20))
@@ -471,8 +465,9 @@ for counter in range(0, 200):
 	s.build()
 	s.capture()
 	s.clear()
-	print('sleeping to cool down the cpu...')
+	print('sleep to cool down the cpu...')
 	time.sleep(sleepTimeSec)
+	print('wake up...')
 
 
 
