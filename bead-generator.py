@@ -454,22 +454,24 @@ config = {
 	}
 
 
-counter = 0
-for beads in range(0, 200, 10):
-	for k in range(0, 10):
-		counter = counter + 1
-		config['name'] = 'scene-' + str(counter)
-		config['background-color'] = (random.random(), random.random(), random.random(), random.random())
-		print('background-color:', config['background-color'])
-		config['beads']['qty'] =  beads
-		config['cones']['qty'] =  max(0, random.randint(-30, 20))
-		config['spheres']['qty'] = max(0, random.randint(-30, 20))
-		config['cubes']['qty'] =  max(0, random.randint(-30, 20))
-		config['numberOfmaterials'] = random.randint(1, 20)
-		s = MyScene(config)
-		s.build()
-		s.capture()
-		s.clear()
+counter = 57
+for counter in range(0, 200):
+	beads = 10 * (counter // 10)
+	print('beads', beads)
+	print('k', k)
+	counter = counter + 1
+	config['name'] = 'scene-' + str(counter)
+	config['background-color'] = (random.random(), random.random(), random.random(), random.random())
+	print('background-color:', config['background-color'])
+	config['beads']['qty'] =  beads
+	config['cones']['qty'] =  max(0, random.randint(-30, 20))
+	config['spheres']['qty'] = max(0, random.randint(-30, 20))
+	config['cubes']['qty'] =  max(0, random.randint(-30, 20))
+	config['numberOfmaterials'] = random.randint(1, 20)
+	s = MyScene(config)
+	s.build()
+	s.capture()
+	s.clear()
 
 
 
