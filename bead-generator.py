@@ -451,7 +451,7 @@ config = {
 	}
 
 sleepTimeSec = 20
-for counter in range(57, 200):
+for counter in range(139, 142):
 	beads = 10 * (counter // 10)
 	print('counter', counter, 'beads', beads)
 	config['name'] = 'scene-' + str(counter)
